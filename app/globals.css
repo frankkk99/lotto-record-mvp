@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background: #050608;
+  color: #f8fafc;
+}
+
+input,
+select,
+textarea {
+  outline: none;
+}
+
+
+@layer components {
+  .field {
+    @apply w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-4 text-white placeholder:text-slate-600;
+  }
+}
