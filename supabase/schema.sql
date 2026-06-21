@@ -1,57 +1,44 @@
--- Lotto Record MVP schema
--- ระบบนี้ออกแบบสำหรับบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัวเท่านั้น
+-- Quick Number Record MVP schema
+-- ระบบนี้เป็นเครื่องมือบันทึกข้อมูลส่วนตัว ไม่มีระบบรับเงินออนไลน์ ฝากถอน หรือจ่ายเงินในระบบ
 -- ก่อนใช้จริงให้เปิด Supabase Auth และ Row Level Security ทุกตาราง
 
 create extension if not exists "pgcrypto";
 
-create table if not exists draws (
+create table if not exists draw_rounds (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid,
   draw_date date not null,
   title text,
-  status text not null default 'open' check (status in ('open', 'calculated', 'archived')),
+  status text not null default 'open' check (status in ('open', 'archived')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-create table if not exists ticket_entries (
+create table if not exists number_entries (
   id uuid primary key default gen_random_uuid(),
-  draw_id uuid references draws(id) on delete cascade,
+  draw_round_id uuid references draw_rounds(id) on delete cascade,
   created_by uuid,
-  holder_name text not null,
-  lottery_number text not null check (lottery_number ~ '^[0-9]{6}$'),
-  quantity integer not null default 1 check (quantity > 0),
-  price_per_ticket numeric(12,2) not null default 80 check (price_per_ticket > 0),
+  customer_name text not null,
+  number text not null check (number ~ '^[0-9]{1,3}$'),
+  kind text not null check (kind in ('two_top', 'two_bottom', 'three_direct', 'three_tod', 'run_top', 'run_bottom')),
+  amount numeric(12,2) not null check (amount > 0),
+  payment_status text not null default 'paid' check (payment_status in ('paid', 'unpaid')),
   note text,
-  matched_prizes jsonb not null default '[]'::jsonb,
-  reward_amount numeric(14,2) not null default 0,
-  net_amount numeric(14,2) not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
-);
-
-create table if not exists draw_results (
-  id uuid primary key default gen_random_uuid(),
-  draw_id uuid references draws(id) on delete cascade,
-  first_prize text check (first_prize is null or first_prize ~ '^[0-9]{6}$'),
-  front3 text,
-  back3 text,
-  bottom2 text check (bottom2 is null or bottom2 ~ '^[0-9]{2}$'),
-  source_url text,
-  calculated_at timestamptz,
-  created_at timestamptz not null default now()
 );
 
 create table if not exists share_logs (
   id uuid primary key default gen_random_uuid(),
-  draw_id uuid references draws(id) on delete cascade,
+  draw_round_id uuid references draw_rounds(id) on delete cascade,
   shared_by uuid,
   share_type text not null,
   shared_to text,
   created_at timestamptz not null default now()
 );
 
-create index if not exists idx_draws_owner_date on draws(owner_id, draw_date desc);
-create index if not exists idx_ticket_entries_draw on ticket_entries(draw_id);
-create index if not exists idx_ticket_entries_holder on ticket_entries(holder_name);
-create index if not exists idx_ticket_entries_number on ticket_entries(lottery_number);
+create index if not exists idx_draw_rounds_owner_date on draw_rounds(owner_id, draw_date desc);
+create index if not exists idx_number_entries_round on number_entries(draw_round_id);
+create index if not exists idx_number_entries_customer on number_entries(customer_name);
+create index if not exists idx_number_entries_number on number_entries(number);
+create index if not exists idx_number_entries_kind on number_entries(kind);
