@@ -1,48 +1,36 @@
-export type PrizeType = "first_prize" | "front_3" | "back_3" | "bottom_2";
+export type EntryKind = "two_top" | "two_bottom" | "three_direct" | "three_tod" | "run_top" | "run_bottom";
 
-export type PrizeMatch = {
-  type: PrizeType;
-  label: string;
-  amountPerTicket: number;
-};
+export type PaymentStatus = "paid" | "unpaid";
 
-export type Entry = {
+export type NumberEntry = {
   id: string;
   drawDate: string;
-  holderName: string;
-  lotteryNumber: string;
-  quantity: number;
-  pricePerTicket: number;
+  customerName: string;
+  number: string;
+  kind: EntryKind;
+  amount: number;
+  paymentStatus: PaymentStatus;
   note: string;
-  matchedPrizes: PrizeMatch[];
-  rewardAmount: number;
-  netAmount: number;
   createdAt: string;
+  updatedAt?: string;
 };
 
-export type ResultInput = {
-  firstPrize: string;
-  front3: string;
-  back3: string;
-  bottom2: string;
-};
-
-export type HolderReport = {
-  holderName: string;
+export type CustomerReport = {
+  customerName: string;
   totalEntries: number;
-  totalTickets: number;
-  totalCost: number;
-  totalReward: number;
-  netAmount: number;
-  wins: number;
+  totalAmount: number;
+  paidAmount: number;
+  unpaidAmount: number;
+  latestAt: string;
 };
 
 export type BulkDraft = {
   id: string;
-  holderName: string;
-  lotteryNumber: string;
-  quantity: string;
-  pricePerTicket: string;
+  customerName: string;
+  number: string;
+  kind: EntryKind;
+  amount: string;
+  paymentStatus: PaymentStatus;
   note: string;
   sourceLine: string;
   error?: string;
