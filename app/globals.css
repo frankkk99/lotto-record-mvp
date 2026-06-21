@@ -17,6 +17,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -38,6 +39,10 @@ textarea {
   outline: none;
 }
 
+button {
+  touch-action: manipulation;
+}
+
 @layer components {
   .field {
     @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100;
@@ -57,5 +62,9 @@ textarea {
 
   .secondary-button {
     @apply rounded-2xl border border-slate-200 bg-white font-semibold text-[#0b2e59] shadow-sm transition hover:bg-blue-50 active:scale-[0.99];
+  }
+
+  .step-button {
+    @apply h-14 w-16 rounded-2xl bg-[#0b2e59] text-3xl font-black leading-none text-white shadow-lg shadow-blue-950/15 transition active:scale-95;
   }
 }
