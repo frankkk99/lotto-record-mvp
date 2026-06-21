@@ -9,9 +9,9 @@ const prompt = Prompt({
 });
 
 export const metadata: Metadata = {
-  title: "Lotto Record MVP",
-  description: "เว็บแอพบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัว พร้อม Report และแชร์ LINE",
-  applicationName: "Lotto Record MVP",
+  title: "ระบบจดเลขเร็ว",
+  description: "เว็บแอพบันทึกเลขส่วนตัวสำหรับหน้างาน ปุ่มใหญ่ จดเร็ว สรุปยอดง่าย และไม่มีระบบรับเงินออนไลน์",
+  applicationName: "ระบบจดเลขเร็ว",
   manifest: "/manifest.webmanifest"
 };
 
