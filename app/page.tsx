@@ -33,7 +33,7 @@ type FormState = {
 const entriesKey = "lotto-record:entries";
 const userKey = "lotto-record:user";
 const today = new Date().toISOString().slice(0, 10);
-const gloUrl = "https://www.glo.or.th/";
+const gloUrl = "https://www.glo.or.th/home-page";
 
 function makeId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -75,7 +75,13 @@ export default function HomePage() {
   const totals = useMemo(() => {
     const totalAmount = roundEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalPrize = roundEntries.reduce((sum, entry) => sum + entry.prizeAmount, 0);
-    return { totalAmount, totalPrize, totalNet: totalPrize - totalAmount, entries: roundEntries.length, customers: report.length };
+    return {
+      totalAmount,
+      totalPrize,
+      totalNet: totalPrize - totalAmount,
+      entries: roundEntries.length,
+      customers: report.length
+    };
   }, [roundEntries, report.length]);
 
   function login() {
@@ -188,15 +194,19 @@ export default function HomePage() {
 
   if (!userName) {
     return (
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#1f2937,#050608_55%)] px-5 py-8 text-white">
+      <main className="min-h-screen bg-[#f4f8f5] px-5 py-8 text-slate-900">
         <section className="mx-auto flex min-h-[80vh] max-w-md flex-col justify-center">
-          <div className="rounded-[2rem] border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
-            <p className="text-sm text-emerald-300">Lotto Record MVP</p>
-            <h1 className="mt-3 text-3xl font-bold leading-tight">ระบบบันทึกและคำนวณรายงวด</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">บันทึกข้อมูล คำนวณรายงาน และแชร์สรุปออก LINE ได้ง่ายขึ้น</p>
-            <Field label="ชื่อผู้ใช้งาน"><input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="เช่น แอดมินร้าน" className="field" /></Field>
-            <button onClick={login} className="mt-4 w-full rounded-2xl bg-emerald-400 px-4 py-4 font-semibold text-slate-950">เข้าใช้งาน</button>
-            <p className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-xs leading-5 text-amber-100">ระบบนี้เป็นเครื่องมือบันทึกและคำนวณข้อมูลเท่านั้น ไม่มีระบบซื้อขาย ฝากถอน หรือจ่ายเงินผ่านระบบ</p>
+          <div className="overflow-hidden rounded-[2rem] border border-emerald-100 bg-white shadow-2xl shadow-emerald-950/10">
+            <div className="bg-gradient-to-r from-[#006b45] via-[#008f5d] to-[#0aa36b] px-6 py-5 text-white">
+              <p className="text-sm font-semibold text-emerald-50">Lotto Record</p>
+              <h1 className="mt-3 text-3xl font-bold leading-tight">ระบบบันทึกและคำนวณรายงวด</h1>
+              <p className="mt-3 text-sm leading-6 text-emerald-50/90">โทนทางการ ใช้งานง่าย ตรวจรายการก่อนบันทึก และแชร์สรุปออก LINE ได้</p>
+            </div>
+            <div className="p-6">
+              <Field label="ชื่อผู้ใช้งาน"><input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="เช่น แอดมินร้าน" className="field" /></Field>
+              <button onClick={login} className="mt-4 w-full rounded-2xl bg-[#007a4d] px-4 py-4 font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-[#006b45]">เข้าใช้งาน</button>
+              <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">ระบบนี้เป็นเครื่องมือบันทึกและคำนวณข้อมูลเท่านั้น ไม่มีระบบซื้อขาย ฝากถอน หรือจ่ายเงินผ่านระบบ</p>
+            </div>
           </div>
         </section>
       </main>
@@ -204,18 +214,30 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050608] px-4 py-5 text-white">
+    <main className="min-h-screen bg-[#f4f8f5] px-4 py-5 text-slate-900">
       <section className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm text-emerald-300">เข้าสู่ระบบโดย {userName}</p>
-            <h1 className="text-2xl font-bold md:text-4xl">บันทึกและคำนวณรายงวด</h1>
-            <p className="mt-2 text-sm text-slate-400">กรอกทีละรายการ หรือวางข้อความจาก LINE แล้วตรวจสอบก่อนยืนยัน</p>
+        <header className="overflow-hidden rounded-[2rem] border border-emerald-100 bg-white shadow-lg shadow-emerald-950/5">
+          <div className="bg-gradient-to-r from-[#005a3d] via-[#007a4d] to-[#0aa36b] p-5 text-white md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-emerald-50">เข้าสู่ระบบโดย {userName}</p>
+                <h1 className="text-2xl font-bold md:text-4xl">บันทึกและคำนวณรายงวด</h1>
+                <p className="mt-2 text-sm text-emerald-50/90">กรอกทีละรายการ หรือวางข้อความจาก LINE แล้วตรวจสอบก่อนยืนยัน</p>
+              </div>
+              <div className="flex gap-2">
+                <input type="date" value={roundDate} onChange={(e) => setRoundDate(e.target.value)} className="rounded-2xl border border-white/30 bg-white px-4 py-3 text-sm text-slate-900" />
+                <button onClick={logout} className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm text-white">ออก</button>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2"><input type="date" value={roundDate} onChange={(e) => setRoundDate(e.target.value)} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm" /><button onClick={logout} className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-slate-300">ออก</button></div>
+          <div className="grid gap-3 border-t border-emerald-100 bg-[#f8fbf8] p-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">ระบบบันทึกข้อมูลส่วนตัว ไม่ใช่ระบบซื้อขายหรือจ่ายเงิน</div>
+            <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">ตรวจข้อมูลก่อนยืนยัน ลดความผิดพลาดจากการคัดลอก LINE</div>
+            <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">เปิดเว็บกองสลากเพื่อเทียบผลจากแหล่งทางการก่อนคำนวณ</div>
+          </div>
         </header>
 
-        {message ? <div className="mt-4 rounded-2xl bg-emerald-400/10 p-4 text-sm text-emerald-200">{message}</div> : null}
+        {message ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm">{message}</div> : null}
 
         <section className="mt-4 grid gap-3 md:grid-cols-5">
           <StatCard title="ยอดรวม" value={formatMoney(totals.totalAmount)} />
@@ -237,41 +259,71 @@ export default function HomePage() {
         {activeTab === "bulk" ? <BulkPanel bulkText={bulkText} setBulkText={setBulkText} bulkDefaultName={bulkDefaultName} setBulkDefaultName={setBulkDefaultName} bulkDefaultType={bulkDefaultType} setBulkDefaultType={setBulkDefaultType} prepareBulkData={prepareBulkData} drafts={bulkDrafts} updateDraft={updateDraft} confirmBulkData={confirmBulkData} /> : null}
         {activeTab === "report" ? <ReportPanel report={report} copySummary={copySummary} shareSummary={shareSummary} /> : null}
         {activeTab === "calculate" ? <CalculatePanel result={result} setResult={setResult} updateFirstPrize={updateFirstPrize} calculateRound={calculateRound} report={report} /> : null}
-        {activeTab === "entries" ? <section className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><h2 className="text-xl font-semibold">รายการทั้งหมดในงวดนี้</h2><EntryTable entries={roundEntries} onDelete={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} /></section> : null}
+        {activeTab === "entries" ? <section className="panel"><h2 className="text-xl font-semibold text-[#005a3d]">รายการทั้งหมดในงวดนี้</h2><EntryTable entries={roundEntries} onDelete={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} /></section> : null}
       </section>
     </main>
   );
 }
 
 function AddPanel({ form, setForm, changeType, addEntry, addAmount }: { form: FormState; setForm: (value: FormState | ((current: FormState) => FormState)) => void; changeType: (type: NumberType) => void; addEntry: () => void; addAmount: (value: number) => void }) {
-  return <section className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><h2 className="text-xl font-semibold">เพิ่มรายการแบบเร็ว</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="ชื่อคนซื้อ / ชื่อผู้ฝาก"><input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="เช่น บอย" className="field" /></Field><Field label="เลขที่ต้องบันทึก"><input value={form.number} onChange={(e) => setForm({ ...form, number: normalizeNumber(e.target.value) })} placeholder="เช่น 55" inputMode="numeric" className="field text-2xl font-bold tracking-widest" /></Field><Field label="ประเภทเลข"><NumberTypeSelect value={form.numberType} onChange={changeType} /><p className="mt-2 text-xs text-slate-500">{numberTypeHints[form.numberType]}</p></Field><Field label="จำนวนเงิน"><input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="เช่น 100" inputMode="decimal" className="field" /><div className="mt-2 grid grid-cols-4 gap-2">{[10, 20, 50, 100].map((value) => <button key={value} onClick={() => addAmount(value)} className="rounded-xl bg-white/10 py-2 text-sm">+{value}</button>)}</div></Field><Field label="อัตราจ่าย"><input value={form.payoutRate} onChange={(e) => setForm({ ...form, payoutRate: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" className="field" /></Field><Field label="หมายเหตุ"><input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="เช่น มาจากไลน์กลุ่ม" className="field" /></Field></div><button onClick={addEntry} className="mt-5 w-full rounded-2xl bg-emerald-400 px-5 py-4 text-lg font-bold text-slate-950">บันทึกแล้วเพิ่มต่อ</button></section>;
+  return (
+    <section className="panel">
+      <SectionTitle title="เพิ่มรายการแบบเร็ว" description="ใส่ชื่อ เลข ประเภท เงิน และหมายเหตุให้ครบก่อนบันทึก" />
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Field label="ชื่อคนซื้อ / ชื่อผู้ฝาก"><input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="เช่น บอย" className="field" /></Field>
+        <Field label="เลขที่ต้องบันทึก"><input value={form.number} onChange={(e) => setForm({ ...form, number: normalizeNumber(e.target.value) })} placeholder="เช่น 55" inputMode="numeric" className="field text-2xl font-bold tracking-widest" /></Field>
+        <Field label="ประเภทเลข"><NumberTypeSelect value={form.numberType} onChange={changeType} /><p className="mt-2 text-xs text-slate-500">{numberTypeHints[form.numberType]}</p></Field>
+        <Field label="จำนวนเงิน"><input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="เช่น 100" inputMode="decimal" className="field" /><div className="mt-2 grid grid-cols-4 gap-2">{[10, 20, 50, 100].map((value) => <button key={value} onClick={() => addAmount(value)} className="rounded-xl border border-emerald-100 bg-emerald-50 py-2 text-sm font-semibold text-[#007a4d]">+{value}</button>)}</div></Field>
+        <Field label="อัตราจ่าย"><input value={form.payoutRate} onChange={(e) => setForm({ ...form, payoutRate: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" className="field" /></Field>
+        <Field label="หมายเหตุ"><input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="เช่น มาจากไลน์กลุ่ม" className="field" /></Field>
+      </div>
+      <button onClick={addEntry} className="primary-button mt-5 w-full px-5 py-4 text-lg">บันทึกแล้วเพิ่มต่อ</button>
+    </section>
+  );
 }
 
 function BulkPanel(props: { bulkText: string; setBulkText: (value: string) => void; bulkDefaultName: string; setBulkDefaultName: (value: string) => void; bulkDefaultType: NumberType; setBulkDefaultType: (value: NumberType) => void; prepareBulkData: () => void; drafts: BulkDraft[]; updateDraft: (id: string, patch: Partial<BulkDraft>) => void; confirmBulkData: () => void }) {
-  return <section className="mt-5 space-y-4"><div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><h2 className="text-xl font-semibold">วางข้อความจาก LINE แล้วเตรียมข้อมูล</h2><p className="mt-1 text-sm text-slate-400">ระบบจะแยกชื่อ เลข ประเภท เงิน และหมายเหตุให้ก่อนบันทึกจริง</p></div><button onClick={props.prepareBulkData} className="rounded-2xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950">เตรียมข้อมูล</button></div><div className="mt-4 grid gap-4 md:grid-cols-[0.7fr_0.7fr_1.6fr]"><Field label="ชื่อเริ่มต้น ถ้าข้อความไม่มีชื่อ"><input value={props.bulkDefaultName} onChange={(e) => props.setBulkDefaultName(e.target.value)} placeholder="เช่น บอย" className="field" /></Field><Field label="ประเภทเริ่มต้น"><NumberTypeSelect value={props.bulkDefaultType} onChange={props.setBulkDefaultType} /></Field><Field label="ตัวอย่างรูปแบบที่ระบบอ่านได้"><div className="rounded-2xl bg-black/30 p-3 text-xs leading-5 text-slate-400">บอย 55 ล่าง 100<br />มด 123 บน3 50<br />เจน 789 หน้า 20<br />เอ 456 ท้าย3 30</div></Field></div><Field label="วางข้อความชุดจาก LINE"><textarea value={props.bulkText} onChange={(e) => props.setBulkText(e.target.value)} placeholder={'ตัวอย่าง:\nบอย 55 ล่าง 100\nบอย 89 ล่าง 50\nมด 123 บน3 20'} className="field mt-2 min-h-48 resize-y leading-7" /></Field></div>{props.drafts.length ? <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h3 className="text-lg font-semibold">ตรวจสอบก่อนยืนยัน</h3><p className="text-sm text-slate-400">แก้ไขช่องที่ระบบแยกผิดได้ แถวสีแดงจะไม่ถูกบันทึก</p></div><button onClick={props.confirmBulkData} className="rounded-2xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950">ยืนยันบันทึก {props.drafts.filter((draft) => !draft.error).length} รายการ</button></div><BulkDraftTable drafts={props.drafts} onUpdate={props.updateDraft} /></div> : null}</section>;
+  return (
+    <section className="mt-5 space-y-4">
+      <div className="panel">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <SectionTitle title="วางข้อความจาก LINE แล้วเตรียมข้อมูล" description="ระบบจะแยกชื่อ เลข ประเภท เงิน และหมายเหตุให้ก่อนบันทึกจริง" />
+          <button onClick={props.prepareBulkData} className="primary-button px-5 py-3">เตรียมข้อมูล</button>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-[0.7fr_0.7fr_1.6fr]">
+          <Field label="ชื่อเริ่มต้น ถ้าข้อความไม่มีชื่อ"><input value={props.bulkDefaultName} onChange={(e) => props.setBulkDefaultName(e.target.value)} placeholder="เช่น บอย" className="field" /></Field>
+          <Field label="ประเภทเริ่มต้น"><NumberTypeSelect value={props.bulkDefaultType} onChange={props.setBulkDefaultType} /></Field>
+          <Field label="ตัวอย่างรูปแบบที่ระบบอ่านได้"><div className="rounded-2xl border border-emerald-100 bg-[#f8fbf8] p-3 text-xs leading-5 text-slate-600">บอย 55 ล่าง 100<br />มด 123 บน3 50<br />เจน 789 หน้า 20<br />เอ 456 ท้าย3 30</div></Field>
+        </div>
+        <Field label="วางข้อความชุดจาก LINE"><textarea value={props.bulkText} onChange={(e) => props.setBulkText(e.target.value)} placeholder={'ตัวอย่าง:\nบอย 55 ล่าง 100\nบอย 89 ล่าง 50\nมด 123 บน3 20'} className="field mt-2 min-h-48 resize-y leading-7" /></Field>
+      </div>
+      {props.drafts.length ? <div className="panel"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><SectionTitle title="ตรวจสอบก่อนยืนยัน" description="แก้ไขช่องที่ระบบแยกผิดได้ แถวสีแดงจะไม่ถูกบันทึก" /><button onClick={props.confirmBulkData} className="primary-button px-5 py-3">ยืนยันบันทึก {props.drafts.filter((draft) => !draft.error).length} รายการ</button></div><BulkDraftTable drafts={props.drafts} onUpdate={props.updateDraft} /></div> : null}
+    </section>
+  );
 }
 
 function ReportPanel({ report, copySummary, shareSummary }: { report: ReturnType<typeof buildCustomerReport>; copySummary: () => void; shareSummary: () => void }) {
-  return <section className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h2 className="text-xl font-semibold">Report ตามรายชื่อ</h2><p className="text-sm text-slate-400">ดูว่าใครยอดเท่าไหร่ ถูกเท่าไหร่ และหักลบสุทธิเหลือเท่าไหร่</p></div><div className="flex gap-2"><button onClick={copySummary} className="rounded-2xl border border-white/10 px-4 py-3 text-sm">Copy</button><button onClick={shareSummary} className="rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950">Share LINE</button></div></div><ReportTable report={report} /></section>;
+  return <section className="panel"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><SectionTitle title="Report ตามรายชื่อ" description="ดูว่าใครยอดเท่าไหร่ ถูกเท่าไหร่ และหักลบสุทธิเหลือเท่าไหร่" /><div className="flex gap-2"><button onClick={copySummary} className="secondary-button px-4 py-3 text-sm">Copy</button><button onClick={shareSummary} className="primary-button px-4 py-3 text-sm">Share LINE</button></div></div><ReportTable report={report} /></section>;
 }
 
 function CalculatePanel({ result, setResult, updateFirstPrize, calculateRound, report }: { result: ResultInput; setResult: (value: ResultInput) => void; updateFirstPrize: (value: string) => void; calculateRound: () => void; report: ReturnType<typeof buildCustomerReport> }) {
-  return <section className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><h2 className="text-xl font-semibold">คำนวณผลหลังออกผล</h2><p className="mt-1 text-sm text-slate-400">กรอกหรือวางผลจากแหล่งทางการ แล้วค่อยกดคำนวณ</p></div><a href={gloUrl} target="_blank" rel="noreferrer" className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-slate-200">เปิดเว็บทางการ</a></div><div className="mt-4 grid gap-4 md:grid-cols-3"><Field label="เลข 6 หลัก"><input value={result.firstPrize} onChange={(e) => updateFirstPrize(e.target.value)} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="123456" /></Field><Field label="2 ตัวบน"><input value={result.top2} onChange={(e) => setResult({ ...result, top2: normalizeNumber(e.target.value).slice(0, 2) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="56" /></Field><Field label="2 ตัวล่าง"><input value={result.bottom2} onChange={(e) => setResult({ ...result, bottom2: normalizeNumber(e.target.value).slice(0, 2) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="55" /></Field><Field label="3 ตัวบน"><input value={result.top3} onChange={(e) => setResult({ ...result, top3: normalizeNumber(e.target.value).slice(0, 3) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="456" /></Field><Field label="เลขหน้า 3 ตัว หลายเลขได้"><input value={result.front3} onChange={(e) => setResult({ ...result, front3: e.target.value })} className="field text-2xl font-bold tracking-widest" placeholder="123 456" /></Field><Field label="เลขท้าย 3 ตัว หลายเลขได้"><input value={result.back3} onChange={(e) => setResult({ ...result, back3: e.target.value })} className="field text-2xl font-bold tracking-widest" placeholder="789 012" /></Field></div><button onClick={calculateRound} className="mt-5 w-full rounded-2xl bg-emerald-400 px-5 py-4 text-lg font-bold text-slate-950">คำนวณผลทั้งงวด</button><ReportTable report={report} /></section>;
+  return <section className="panel"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><SectionTitle title="คำนวณผลหลังออกผล" description="กรอกหรือวางผลจากแหล่งทางการ แล้วค่อยกดคำนวณ" /><a href={gloUrl} target="_blank" rel="noreferrer" className="secondary-button px-4 py-3 text-sm">เปิดเว็บกองสลาก</a></div><div className="mt-4 grid gap-4 md:grid-cols-3"><Field label="รางวัลที่ 1 / เลข 6 หลัก"><input value={result.firstPrize} onChange={(e) => updateFirstPrize(e.target.value)} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="123456" /></Field><Field label="2 ตัวบน"><input value={result.top2} onChange={(e) => setResult({ ...result, top2: normalizeNumber(e.target.value).slice(0, 2) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="56" /></Field><Field label="2 ตัวล่าง / เลขท้าย 2 ตัว"><input value={result.bottom2} onChange={(e) => setResult({ ...result, bottom2: normalizeNumber(e.target.value).slice(0, 2) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="55" /></Field><Field label="3 ตัวบน"><input value={result.top3} onChange={(e) => setResult({ ...result, top3: normalizeNumber(e.target.value).slice(0, 3) })} className="field text-2xl font-bold tracking-widest" inputMode="numeric" placeholder="456" /></Field><Field label="เลขหน้า 3 ตัว หลายเลขได้"><input value={result.front3} onChange={(e) => setResult({ ...result, front3: e.target.value })} className="field text-2xl font-bold tracking-widest" placeholder="123 456" /></Field><Field label="เลขท้าย 3 ตัว หลายเลขได้"><input value={result.back3} onChange={(e) => setResult({ ...result, back3: e.target.value })} className="field text-2xl font-bold tracking-widest" placeholder="789 012" /></Field></div><button onClick={calculateRound} className="primary-button mt-5 w-full px-5 py-4 text-lg">คำนวณผลทั้งงวด</button><ReportTable report={report} /></section>;
 }
 
-function StatCard({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) { return <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-4"><p className="text-sm text-slate-400">{title}</p><p className={`mt-2 text-2xl font-bold ${highlight ? "text-emerald-300" : "text-white"}`}>{value}</p></div>; }
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) { return <button onClick={onClick} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${active ? "bg-emerald-400 text-slate-950" : "bg-white/10 text-slate-200"}`}>{children}</button>; }
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="mt-4 block"><span className="mb-2 block text-sm text-slate-400">{label}</span>{children}</label>; }
+function SectionTitle({ title, description }: { title: string; description: string }) { return <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#007a4d]">GLO style panel</p><h2 className="mt-1 text-xl font-semibold text-[#005a3d]">{title}</h2><p className="mt-1 text-sm text-slate-600">{description}</p></div>; }
+function StatCard({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) { return <div className="rounded-[1.5rem] border border-emerald-100 bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">{title}</p><p className={`mt-2 text-2xl font-bold ${highlight ? "text-[#007a4d]" : "text-slate-900"}`}>{value}</p></div>; }
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) { return <button onClick={onClick} className={`rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition ${active ? "bg-[#007a4d] text-white" : "border border-emerald-100 bg-white text-slate-700 hover:bg-emerald-50"}`}>{children}</button>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="mt-4 block"><span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>{children}</label>; }
 function NumberTypeSelect({ value, onChange }: { value: NumberType; onChange: (value: NumberType) => void }) { return <select value={value} onChange={(e) => onChange(e.target.value as NumberType)} className="field">{numberTypeOptions.map((type) => <option key={type} value={type}>{numberTypeLabel[type]}</option>)}</select>; }
 
 function BulkDraftTable({ drafts, onUpdate }: { drafts: BulkDraft[]; onUpdate: (id: string, patch: Partial<BulkDraft>) => void }) {
-  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1100px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-400"><tr><th className="px-3 py-2">สถานะ</th><th className="px-3 py-2">ชื่อ</th><th className="px-3 py-2">เลข</th><th className="px-3 py-2">ประเภท</th><th className="px-3 py-2 text-right">เงิน</th><th className="px-3 py-2 text-right">อัตราจ่าย</th><th className="px-3 py-2">หมายเหตุ</th></tr></thead><tbody>{drafts.map((draft) => <tr key={draft.id} className="bg-white/[0.06] align-top"><td className={`rounded-l-2xl px-3 py-3 text-xs ${draft.error ? "text-red-300" : "text-emerald-300"}`}>{draftStatus(draft)}</td><td className="px-3 py-3"><input value={draft.customerName} onChange={(e) => onUpdate(draft.id, { customerName: e.target.value })} className="mini-field" /></td><td className="px-3 py-3"><input value={draft.number} onChange={(e) => onUpdate(draft.id, { number: normalizeNumber(e.target.value) })} className="mini-field font-bold tracking-wider" /></td><td className="px-3 py-3"><NumberTypeSelect value={draft.numberType} onChange={(value) => onUpdate(draft.id, { numberType: value, payoutRate: String(defaultPayoutRate[value]) })} /></td><td className="px-3 py-3"><input value={draft.amount} onChange={(e) => onUpdate(draft.id, { amount: e.target.value.replace(/[^0-9.]/g, "") })} className="mini-field text-right" /></td><td className="px-3 py-3"><input value={draft.payoutRate} onChange={(e) => onUpdate(draft.id, { payoutRate: e.target.value.replace(/[^0-9.]/g, "") })} className="mini-field text-right" /></td><td className="rounded-r-2xl px-3 py-3"><input value={draft.note} onChange={(e) => onUpdate(draft.id, { note: e.target.value })} className="mini-field" /></td></tr>)}</tbody></table></div>;
+  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1100px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-500"><tr><th className="px-3 py-2">สถานะ</th><th className="px-3 py-2">ชื่อ</th><th className="px-3 py-2">เลข</th><th className="px-3 py-2">ประเภท</th><th className="px-3 py-2 text-right">เงิน</th><th className="px-3 py-2 text-right">อัตราจ่าย</th><th className="px-3 py-2">หมายเหตุ</th></tr></thead><tbody>{drafts.map((draft) => <tr key={draft.id} className="bg-[#f8fbf8] align-top shadow-sm"><td className={`rounded-l-2xl px-3 py-3 text-xs ${draft.error ? "text-red-600" : "text-[#007a4d]"}`}>{draftStatus(draft)}</td><td className="px-3 py-3"><input value={draft.customerName} onChange={(e) => onUpdate(draft.id, { customerName: e.target.value })} className="mini-field" /></td><td className="px-3 py-3"><input value={draft.number} onChange={(e) => onUpdate(draft.id, { number: normalizeNumber(e.target.value) })} className="mini-field font-bold tracking-wider" /></td><td className="px-3 py-3"><NumberTypeSelect value={draft.numberType} onChange={(value) => onUpdate(draft.id, { numberType: value, payoutRate: String(defaultPayoutRate[value]) })} /></td><td className="px-3 py-3"><input value={draft.amount} onChange={(e) => onUpdate(draft.id, { amount: e.target.value.replace(/[^0-9.]/g, "") })} className="mini-field text-right" /></td><td className="px-3 py-3"><input value={draft.payoutRate} onChange={(e) => onUpdate(draft.id, { payoutRate: e.target.value.replace(/[^0-9.]/g, "") })} className="mini-field text-right" /></td><td className="rounded-r-2xl px-3 py-3"><input value={draft.note} onChange={(e) => onUpdate(draft.id, { note: e.target.value })} className="mini-field" /></td></tr>)}</tbody></table></div>;
 }
 
 function ReportTable({ report }: { report: ReturnType<typeof buildCustomerReport> }) {
-  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-400"><tr><th className="px-4 py-2">ชื่อ</th><th className="px-4 py-2 text-right">รายการ</th><th className="px-4 py-2 text-right">ยอดรวม</th><th className="px-4 py-2 text-right">ยอดถูก</th><th className="px-4 py-2 text-right">สุทธิ</th><th className="px-4 py-2 text-right">ถูกกี่รายการ</th></tr></thead><tbody>{report.map((item) => <tr key={item.customerName} className="bg-white/[0.06]"><td className="rounded-l-2xl px-4 py-4 font-semibold">{item.customerName}</td><td className="px-4 py-4 text-right">{item.totalEntries}</td><td className="px-4 py-4 text-right">{formatMoney(item.totalAmount)}</td><td className="px-4 py-4 text-right">{formatMoney(item.totalPrize)}</td><td className={`px-4 py-4 text-right font-bold ${item.netAmount >= 0 ? "text-emerald-300" : "text-red-300"}`}>{item.netAmount >= 0 ? "+" : ""}{formatMoney(item.netAmount)}</td><td className="rounded-r-2xl px-4 py-4 text-right">{item.wins}</td></tr>)}</tbody></table>{report.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">ยังไม่มีข้อมูล</p> : null}</div>;
+  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-500"><tr><th className="px-4 py-2">ชื่อ</th><th className="px-4 py-2 text-right">รายการ</th><th className="px-4 py-2 text-right">ยอดรวม</th><th className="px-4 py-2 text-right">ยอดถูก</th><th className="px-4 py-2 text-right">สุทธิ</th><th className="px-4 py-2 text-right">ถูกกี่รายการ</th></tr></thead><tbody>{report.map((item) => <tr key={item.customerName} className="bg-[#f8fbf8] shadow-sm"><td className="rounded-l-2xl px-4 py-4 font-semibold text-slate-900">{item.customerName}</td><td className="px-4 py-4 text-right">{item.totalEntries}</td><td className="px-4 py-4 text-right">{formatMoney(item.totalAmount)}</td><td className="px-4 py-4 text-right">{formatMoney(item.totalPrize)}</td><td className={`px-4 py-4 text-right font-bold ${item.netAmount >= 0 ? "text-[#007a4d]" : "text-red-600"}`}>{item.netAmount >= 0 ? "+" : ""}{formatMoney(item.netAmount)}</td><td className="rounded-r-2xl px-4 py-4 text-right">{item.wins}</td></tr>)}</tbody></table>{report.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูล</p> : null}</div>;
 }
 
 function EntryTable({ entries, onDelete }: { entries: Entry[]; onDelete: (id: string) => void }) {
-  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-400"><tr><th className="px-4 py-2">ชื่อ</th><th className="px-4 py-2">เลข</th><th className="px-4 py-2">ประเภท</th><th className="px-4 py-2 text-right">เงิน</th><th className="px-4 py-2">หมายเหตุ</th><th className="px-4 py-2">สถานะ</th><th className="px-4 py-2 text-right">รางวัล</th><th className="px-4 py-2"></th></tr></thead><tbody>{entries.map((entry) => <tr key={entry.id} className="bg-white/[0.06]"><td className="rounded-l-2xl px-4 py-4 font-semibold">{entry.customerName}</td><td className="px-4 py-4 text-lg font-bold tracking-wider">{entry.number}</td><td className="px-4 py-4">{numberTypeLabel[entry.numberType]}</td><td className="px-4 py-4 text-right">{formatMoney(entry.amount)}</td><td className="px-4 py-4 text-slate-300">{entry.note || "-"}</td><td className={`px-4 py-4 ${entry.isWin ? "text-emerald-300" : "text-slate-400"}`}>{entry.isWin ? "ถูก" : "ไม่ถูก/รอผล"}</td><td className="px-4 py-4 text-right">{formatMoney(entry.prizeAmount)}</td><td className="rounded-r-2xl px-4 py-4 text-right"><button onClick={() => onDelete(entry.id)} className="text-red-300">ลบ</button></td></tr>)}</tbody></table>{entries.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">ยังไม่มีรายการ</p> : null}</div>;
+  return <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm"><thead className="text-left text-slate-500"><tr><th className="px-4 py-2">ชื่อ</th><th className="px-4 py-2">เลข</th><th className="px-4 py-2">ประเภท</th><th className="px-4 py-2 text-right">เงิน</th><th className="px-4 py-2">หมายเหตุ</th><th className="px-4 py-2">สถานะ</th><th className="px-4 py-2 text-right">รางวัล</th><th className="px-4 py-2"></th></tr></thead><tbody>{entries.map((entry) => <tr key={entry.id} className="bg-[#f8fbf8] shadow-sm"><td className="rounded-l-2xl px-4 py-4 font-semibold text-slate-900">{entry.customerName}</td><td className="px-4 py-4 text-lg font-bold tracking-wider text-[#005a3d]">{entry.number}</td><td className="px-4 py-4">{numberTypeLabel[entry.numberType]}</td><td className="px-4 py-4 text-right">{formatMoney(entry.amount)}</td><td className="px-4 py-4 text-slate-600">{entry.note || "-"}</td><td className={`px-4 py-4 ${entry.isWin ? "text-[#007a4d]" : "text-slate-500"}`}>{entry.isWin ? "ถูก" : "ไม่ถูก/รอผล"}</td><td className="px-4 py-4 text-right">{formatMoney(entry.prizeAmount)}</td><td className="rounded-r-2xl px-4 py-4 text-right"><button onClick={() => onDelete(entry.id)} className="text-red-600">ลบ</button></td></tr>)}</tbody></table>{entries.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">ยังไม่มีรายการ</p> : null}</div>;
 }
