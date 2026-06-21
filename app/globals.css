@@ -3,13 +3,22 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  --glo-green: #007a4d;
+  --glo-deep: #005a3d;
+  --glo-mint: #eef8f2;
+  --glo-gold: #f6c343;
+  --glo-border: #dbe8df;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   min-height: 100vh;
-  background: #050608;
-  color: #f8fafc;
+  background: #f4f8f5;
+  color: #10231b;
 }
 
 input,
@@ -20,10 +29,10 @@ textarea {
 
 @layer components {
   .field {
-    @apply w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-4 text-white placeholder:text-slate-600;
+    @apply w-full rounded-2xl border border-emerald-100 bg-white px-4 py-4 text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100;
   }
 
   .mini-field {
-    @apply w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none ring-emerald-400/30 transition focus:ring-2;
+    @apply w-full rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100;
   }
 }
