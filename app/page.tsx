@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { BulkDraft, Entry, ResultInput } from "@/src/types";
 import { draftStatus, parseBulkText } from "@/src/lib/bulk-parser";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/src/lib/calculation";
 import { loadFromStorage, saveToStorage } from "@/src/lib/storage";
 
-type Tab = "add" | "bulk" | "report" | "calculate" | "entries";
+type Tab = "quick" | "bulk" | "entries" | "report" | "calculate";
 
 type FormState = {
   holderName: string;
@@ -26,9 +26,19 @@ type FormState = {
   note: string;
 };
 
-const entriesKey = "lotto-record:v2:entries";
-const userKey = "lotto-record:v2:user";
+const entriesKey = "lotto-record:v3:entries";
+const userKey = "lotto-record:v3:user";
 const officialResultUrl = "https://www.glo.or.th/home-page";
+const pricePresets = [80, 100, 120];
+const quantityPresets = [1, 2, 5, 10];
+
+const initialForm: FormState = {
+  holderName: "",
+  lotteryNumber: "",
+  quantity: "1",
+  pricePerTicket: "80",
+  note: ""
+};
 
 function getBangkokDate() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -39,18 +49,24 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-const initialForm: FormState = {
-  holderName: "",
-  lotteryNumber: "",
-  quantity: "1",
-  pricePerTicket: "80",
-  note: ""
-};
+function sameHolder(a: string, b: string) {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function recalculateEntryWithQuantity(entry: Entry, quantity: number): Entry {
+  const rewardAmount = entry.matchedPrizes.reduce((sum, prize) => sum + prize.amountPerTicket * quantity, 0);
+  return {
+    ...entry,
+    quantity,
+    rewardAmount,
+    netAmount: rewardAmount - quantity * entry.pricePerTicket
+  };
+}
 
 export default function HomePage() {
   const [userName, setUserName] = useState("");
   const [loginName, setLoginName] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("add");
+  const [activeTab, setActiveTab] = useState<Tab>("quick");
   const [drawDate, setDrawDate] = useState(getBangkokDate());
   const [entries, setEntries] = useState<Entry[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
@@ -68,6 +84,7 @@ export default function HomePage() {
   useEffect(() => saveToStorage(entriesKey, entries), [entries]);
 
   const drawEntries = useMemo(() => entries.filter((entry) => entry.drawDate === drawDate), [entries, drawDate]);
+  const latestEntries = useMemo(() => drawEntries.slice(0, 6), [drawEntries]);
   const report = useMemo(() => buildHolderReport(drawEntries), [drawEntries]);
   const totals = useMemo(() => {
     const totalCost = drawEntries.reduce((sum, entry) => sum + calculateEntryCost(entry), 0);
@@ -101,7 +118,7 @@ export default function HomePage() {
     const pricePerTicket = Number(form.pricePerTicket);
 
     if (!form.holderName.trim()) {
-      setMessage("กรุณาใส่ชื่อเจ้าของรายการ");
+      setMessage("กรุณาใส่ชื่อก่อนบันทึก");
       return null;
     }
 
@@ -139,9 +156,24 @@ export default function HomePage() {
   function addEntry() {
     const entry = createEntryFromForm();
     if (!entry) return;
-    setEntries((current) => [entry, ...current]);
+
+    const duplicate = drawEntries.find((item) =>
+      sameHolder(item.holderName, entry.holderName)
+      && item.lotteryNumber === entry.lotteryNumber
+      && item.pricePerTicket === entry.pricePerTicket
+    );
+
+    if (duplicate) {
+      const nextQuantity = duplicate.quantity + entry.quantity;
+      setEntries((current) => current.map((item) => item.id === duplicate.id ? recalculateEntryWithQuantity(item, nextQuantity) : item));
+      setMessage(`เลข ${entry.lotteryNumber} ของ ${entry.holderName} มีอยู่แล้ว ระบบรวมเป็น ${nextQuantity} ใบให้แล้ว`);
+    } else {
+      setEntries((current) => [entry, ...current]);
+      setMessage(`บันทึกแล้ว: ${entry.holderName} เลข ${entry.lotteryNumber} จำนวน ${entry.quantity} ใบ`);
+    }
+
     setForm((current) => ({ ...current, lotteryNumber: "", quantity: "1", note: "" }));
-    setMessage(`บันทึก ${entry.holderName} เลข ${entry.lotteryNumber} แล้ว`);
+    setActiveTab("quick");
   }
 
   function draftToEntry(draft: BulkDraft): Entry | null {
@@ -167,7 +199,7 @@ export default function HomePage() {
   function prepareBulkData() {
     const drafts = parseBulkText(bulkText, bulkDefaultName);
     setBulkDrafts(drafts);
-    setMessage(drafts.length ? `เตรียมข้อมูลแล้ว ${drafts.length} รายการ กรุณาตรวจสอบก่อนยืนยัน` : "ยังแยกข้อมูลไม่ได้ ลองใส่ชื่อและเลขสลาก 6 หลักให้ชัดขึ้น");
+    setMessage(drafts.length ? `เตรียมข้อมูลแล้ว ${drafts.length} รายการ กรุณาตรวจแถวสีแดงก่อนยืนยัน` : "ยังแยกข้อมูลไม่ได้ ลองใส่ชื่อและเลขสลาก 6 หลักให้ชัดขึ้น");
   }
 
   function updateDraft(id: string, patch: Partial<BulkDraft>) {
@@ -185,10 +217,29 @@ export default function HomePage() {
   function confirmBulkData() {
     const validEntries = bulkDrafts.map(draftToEntry).filter((entry): entry is Entry => Boolean(entry));
     if (!validEntries.length) return setMessage("ยังไม่มีรายการที่พร้อมบันทึก");
-    setEntries((current) => [...validEntries.reverse(), ...current]);
+
+    setEntries((current) => {
+      const next = [...current];
+      for (const entry of validEntries.reverse()) {
+        const duplicateIndex = next.findIndex((item) =>
+          item.drawDate === entry.drawDate
+          && sameHolder(item.holderName, entry.holderName)
+          && item.lotteryNumber === entry.lotteryNumber
+          && item.pricePerTicket === entry.pricePerTicket
+        );
+        if (duplicateIndex >= 0) {
+          next[duplicateIndex] = recalculateEntryWithQuantity(next[duplicateIndex], next[duplicateIndex].quantity + entry.quantity);
+        } else {
+          next.unshift(entry);
+        }
+      }
+      return next;
+    });
+
     setBulkDrafts([]);
     setBulkText("");
-    setMessage(`ยืนยันบันทึกแล้ว ${validEntries.length} รายการ`);
+    setMessage(`ยืนยันบันทึกแล้ว ${validEntries.length} รายการ รายการซ้ำจะถูกรวมใบให้เอง`);
+    setActiveTab("entries");
   }
 
   function calculateRound() {
@@ -198,6 +249,23 @@ export default function HomePage() {
     setEntries((current) => current.map((entry) => calculatedMap.get(entry.id) ?? entry));
     setResult(cleanResult);
     setMessage("คำนวณผลเรียบร้อย ตรวจ Report ได้ทันที");
+  }
+
+  function changeEntryQuantity(id: string, delta: number) {
+    setEntries((current) => current.map((entry) => {
+      if (entry.id !== id) return entry;
+      const nextQuantity = Math.max(1, entry.quantity + delta);
+      return recalculateEntryWithQuantity(entry, nextQuantity);
+    }));
+  }
+
+  function deleteEntry(id: string) {
+    const target = entries.find((entry) => entry.id === id);
+    if (!target) return;
+    const ok = window.confirm(`ลบรายการ ${target.holderName} เลข ${target.lotteryNumber} ใช่ไหม?`);
+    if (!ok) return;
+    setEntries((current) => current.filter((entry) => entry.id !== id));
+    setMessage(`ลบรายการ ${target.lotteryNumber} แล้ว`);
   }
 
   async function copySummary() {
@@ -212,11 +280,15 @@ export default function HomePage() {
 
   async function shareSummary() {
     const text = buildLineSummary(drawDate, report, drawEntries);
-    if (navigator.share) {
-      await navigator.share({ title: `สรุปงวด ${drawDate}`, text });
-      return;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `สรุปงวด ${drawDate}`, text });
+        return;
+      }
+      await copySummary();
+    } catch {
+      setMessage("ยกเลิกการแชร์หรือแชร์ไม่สำเร็จ");
     }
-    await copySummary();
   }
 
   function exportCsv() {
@@ -231,7 +303,7 @@ export default function HomePage() {
         calculateEntryCost(entry),
         entry.rewardAmount,
         entry.netAmount,
-        entry.matchedPrizes.map((prize) => prize.label).join(" + ") || "ไม่ถูกรางวัล",
+        entry.matchedPrizes.map((prize) => prize.label).join(" + ") || "ยังไม่พบรางวัล",
         entry.note
       ])
     ];
@@ -252,15 +324,15 @@ export default function HomePage() {
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-slate-950/10">
             <div className="bg-[linear-gradient(135deg,#0b2e59,#164a86_55%,#d7a84e)] px-6 py-7 text-white">
               <p className="text-sm font-semibold tracking-[0.28em] text-white/75">LOTTO RECORD</p>
-              <h1 className="mt-4 text-3xl font-bold leading-tight">ระบบบันทึกและตรวจคำนวณสลาก</h1>
-              <p className="mt-3 text-sm leading-6 text-blue-50/90">เว็บแอพส่วนตัวสำหรับบันทึกเลขสลาก 6 หลัก ตรวจผล และสรุปรายงานแบบแชร์ต่อได้</p>
+              <h1 className="mt-4 text-3xl font-bold leading-tight">ระบบบันทึกสลากหน้างาน</h1>
+              <p className="mt-3 text-sm leading-6 text-blue-50/90">ออกแบบให้คนจดรายการใช้ง่าย ปุ่มใหญ่ กรอกเร็ว ตรวจพลาดก่อนบันทึก และสรุปรายงานได้ทันที</p>
             </div>
             <div className="p-6">
               <Field label="ชื่อผู้ใช้งาน">
-                <input value={loginName} onChange={(event) => setLoginName(event.target.value)} placeholder="เช่น แอดมิน" className="field" />
+                <input value={loginName} onChange={(event) => setLoginName(event.target.value)} placeholder="เช่น แอดมิน / หน้าร้าน" className="field" />
               </Field>
               <button onClick={login} className="primary-button mt-4 w-full px-4 py-4 text-base">เข้าใช้งาน</button>
-              <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">ระบบนี้เป็นเครื่องมือบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัวเท่านั้น ไม่ใช่ระบบจำหน่ายสลาก รับแทง ฝากถอน หรือจ่ายเงิน</p>
+              <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">ระบบนี้เป็นเครื่องมือบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัวเท่านั้น ไม่ใช่ระบบรับแทง ฝากถอน หรือจ่ายเงิน</p>
             </div>
           </div>
         </section>
@@ -269,113 +341,175 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f7fb] px-4 py-5 text-slate-900">
-      <section className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-[#f4f7fb] px-3 py-4 text-slate-900 md:px-5">
+      <section className="mx-auto max-w-7xl pb-24">
         <header className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-950/5">
           <div className="bg-[linear-gradient(135deg,#08264a,#0b3c72_58%,#c9973d)] p-5 text-white md:p-7">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm text-blue-50/80">เข้าสู่ระบบโดย {userName}</p>
-                <h1 className="text-2xl font-bold md:text-4xl">Lotto Record MVP</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-50/90">บันทึกสลาก 6 หลักตามงวด ตรวจผลจากรางวัลทางการ และสรุปรายงานแยกตามชื่อ</p>
+                <h1 className="text-2xl font-bold md:text-4xl">Lotto Field Desk</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-50/90">โหมดหน้างานสำหรับบันทึกรายการสลากเร็ว กันเลขผิด กันบันทึกซ้ำ และสรุปยอดตามรายชื่อ</p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex">
                 <input type="date" value={drawDate} onChange={(event) => setDrawDate(event.target.value)} className="rounded-2xl border border-white/30 bg-white px-4 py-3 text-sm text-slate-900" />
                 <button onClick={logout} className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20">ออก</button>
               </div>
             </div>
           </div>
-          <div className="grid gap-3 border-t border-slate-200 bg-white p-4 md:grid-cols-3">
-            <InfoCard title="ปลอดภัยกว่า" text="ใช้คำและฟีเจอร์แนวเครื่องมือบันทึกส่วนตัว ไม่ใส่ระบบฝากถอนหรือรับแทง" />
-            <InfoCard title="ตรวจตามผลทางการ" text="รองรับรางวัลที่ 1 เลขหน้า 3 ตัว เลขท้าย 3 ตัว และเลขท้าย 2 ตัว" />
-            <InfoCard title="แชร์ง่าย" text="คัดลอก/แชร์สรุปรายงานไป LINE ได้ทันทีหลังตรวจผล" />
+          <div className="grid gap-3 border-t border-slate-200 bg-white p-4 md:grid-cols-4">
+            <InfoCard title="ปุ่มใหญ่" text="กดง่ายบนมือถือ ใช้งานตอนลูกค้ารอได้เร็วขึ้น" />
+            <InfoCard title="กันเลขผิด" text="เลขต้องครบ 6 หลัก พร้อมแสดงตัวอย่างก่อนบันทึก" />
+            <InfoCard title="รวมซ้ำอัตโนมัติ" text="ชื่อเดิมเลขเดิมจะรวมจำนวนใบให้ ไม่แตกเป็นหลายแถว" />
+            <InfoCard title="ลบแบบยืนยัน" text="กันมือไปโดนปุ่มลบโดยไม่ตั้งใจ" />
           </div>
         </header>
 
-        {message ? <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">{message}</div> : null}
+        {message ? <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">{message}</div> : null}
 
-        <section className="mt-5 grid gap-3 md:grid-cols-5">
+        <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatCard title="ยอดรวม" value={formatMoney(totals.totalCost)} />
-          <StatCard title="รางวัลรวม" value={formatMoney(totals.totalReward)} />
-          <StatCard title="สุทธิ" value={`${totals.totalNet >= 0 ? "+" : ""}${formatMoney(totals.totalNet)}`} highlight={totals.totalNet >= 0} />
-          <StatCard title="จำนวนสลาก" value={`${totals.tickets} ใบ`} />
+          <StatCard title="จำนวนใบ" value={`${totals.tickets} ใบ`} />
+          <StatCard title="รายการ" value={`${totals.entries} รายการ`} />
           <StatCard title="รายชื่อ" value={`${totals.holders} คน`} />
+          <StatCard title="รางวัลรวม" value={formatMoney(totals.totalReward)} highlight={totals.totalReward > 0} />
         </section>
 
-        <nav className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-5">
-          <TabButton active={activeTab === "add"} onClick={() => setActiveTab("add")}>+ เพิ่มรายการ</TabButton>
-          <TabButton active={activeTab === "bulk"} onClick={() => setActiveTab("bulk")}>วางจาก LINE</TabButton>
-          <TabButton active={activeTab === "calculate"} onClick={() => setActiveTab("calculate")}>ตรวจผล</TabButton>
-          <TabButton active={activeTab === "report"} onClick={() => setActiveTab("report")}>Report</TabButton>
-          <TabButton active={activeTab === "entries"} onClick={() => setActiveTab("entries")}>รายการทั้งหมด</TabButton>
+        <nav className="sticky top-2 z-20 mt-5 grid grid-cols-5 gap-2 rounded-[1.35rem] border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-950/5 backdrop-blur">
+          <TabButton active={activeTab === "quick"} onClick={() => setActiveTab("quick")}>ขายเร็ว</TabButton>
+          <TabButton active={activeTab === "bulk"} onClick={() => setActiveTab("bulk")}>LINE</TabButton>
+          <TabButton active={activeTab === "entries"} onClick={() => setActiveTab("entries")}>รายการ</TabButton>
+          <TabButton active={activeTab === "report"} onClick={() => setActiveTab("report")}>สรุป</TabButton>
+          <TabButton active={activeTab === "calculate"} onClick={() => setActiveTab("calculate")}>ตรวจ</TabButton>
         </nav>
 
-        {activeTab === "add" ? <AddPanel form={form} setForm={setForm} addEntry={addEntry} /> : null}
+        {activeTab === "quick" ? <QuickPanel form={form} setForm={setForm} addEntry={addEntry} drawEntries={drawEntries} latestEntries={latestEntries} /> : null}
         {activeTab === "bulk" ? <BulkPanel bulkText={bulkText} setBulkText={setBulkText} bulkDefaultName={bulkDefaultName} setBulkDefaultName={setBulkDefaultName} prepareBulkData={prepareBulkData} drafts={bulkDrafts} updateDraft={updateDraft} confirmBulkData={confirmBulkData} /> : null}
+        {activeTab === "entries" ? <section className="panel"><SectionTitle title="รายการในงวดนี้" description="ดูรายการล่าสุด ปรับจำนวนใบด้วยปุ่ม +/- และลบแบบยืนยัน" /><EntryTable entries={drawEntries} onDelete={deleteEntry} onQuantityChange={changeEntryQuantity} /></section> : null}
+        {activeTab === "report" ? <ReportPanel report={report} totals={totals} copySummary={copySummary} shareSummary={shareSummary} exportCsv={exportCsv} /> : null}
         {activeTab === "calculate" ? <CalculatePanel result={result} setResult={setResult} calculateRound={calculateRound} /> : null}
-        {activeTab === "report" ? <ReportPanel report={report} copySummary={copySummary} shareSummary={shareSummary} exportCsv={exportCsv} /> : null}
-        {activeTab === "entries" ? <section className="panel"><SectionTitle title="รายการทั้งหมดในงวดนี้" description="ตรวจดูรายการ แก้ผิดให้ลบแล้วเพิ่มใหม่ เพื่อกันข้อมูลเพี้ยน" /><EntryTable entries={drawEntries} onDelete={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} /></section> : null}
       </section>
     </main>
   );
 }
 
-function AddPanel({ form, setForm, addEntry }: { form: FormState; setForm: (value: FormState | ((current: FormState) => FormState)) => void; addEntry: () => void }) {
+function QuickPanel({ form, setForm, addEntry, drawEntries, latestEntries }: { form: FormState; setForm: Dispatch<SetStateAction<FormState>>; addEntry: () => void; drawEntries: Entry[]; latestEntries: Entry[] }) {
+  const lotteryNumber = normalizeNumber(form.lotteryNumber).slice(0, 6);
+  const quantity = Number(form.quantity) || 0;
+  const pricePerTicket = Number(form.pricePerTicket) || 0;
+  const holderName = form.holderName.trim();
+  const duplicate = drawEntries.find((entry) => sameHolder(entry.holderName, holderName) && entry.lotteryNumber === lotteryNumber && entry.pricePerTicket === pricePerTicket);
+  const numberError = lotteryNumber ? validateLotteryNumber(lotteryNumber) : "รอเลข 6 หลัก";
+  const canSave = Boolean(holderName && lotteryNumber.length === 6 && quantity > 0 && pricePerTicket > 0);
+
+  function setPatch(patch: Partial<FormState>) {
+    setForm((current) => ({ ...current, ...patch }));
+  }
+
+  function pressDigit(value: string) {
+    setForm((current) => ({ ...current, lotteryNumber: normalizeNumber(`${current.lotteryNumber}${value}`).slice(0, 6) }));
+  }
+
   return (
-    <section className="panel">
-      <SectionTitle title="เพิ่มรายการแบบเร็ว" description="บันทึกเลขสลาก 6 หลัก จำนวนใบ ราคา และหมายเหตุ" />
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="ชื่อเจ้าของรายการ">
-          <input value={form.holderName} onChange={(event) => setForm({ ...form, holderName: event.target.value })} placeholder="เช่น บอย" className="field" />
-        </Field>
-        <Field label="เลขสลาก 6 หลัก">
-          <input value={form.lotteryNumber} onChange={(event) => setForm({ ...form, lotteryNumber: normalizeNumber(event.target.value).slice(0, 6) })} placeholder="123456" inputMode="numeric" className="field text-2xl font-bold tracking-widest" />
-        </Field>
-        <Field label="จำนวนใบ">
-          <input value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value.replace(/[^0-9]/g, "") })} placeholder="1" inputMode="numeric" className="field" />
-        </Field>
-        <Field label="ราคา/ใบ">
-          <input value={form.pricePerTicket} onChange={(event) => setForm({ ...form, pricePerTicket: event.target.value.replace(/[^0-9.]/g, "") })} placeholder="80" inputMode="decimal" className="field" />
-        </Field>
-        <Field label="หมายเหตุ">
-          <input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="เช่น ฝากซื้อ / ชุดที่ 1" className="field" />
-        </Field>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-          <p className="font-semibold text-slate-900">สูตรคิดยอด</p>
-          <p>ยอดรวม = จำนวนใบ × ราคา/ใบ</p>
-          <p className="mt-1">ตัวอย่าง 2 ใบ × 80 = 160 บาท</p>
+    <section className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="panel mt-0">
+        <SectionTitle title="ขายเร็ว / บันทึกเร็ว" description="กรอกชื่อ → กดเลข 6 หลัก → เลือกจำนวนใบ → ตรวจ Preview → บันทึก" />
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <Field label="ชื่อลูกค้า / เจ้าของรายการ">
+            <input value={form.holderName} onChange={(event) => setPatch({ holderName: event.target.value })} placeholder="เช่น พี่บอย / โต๊ะ 3" className="field text-lg font-semibold" />
+          </Field>
+          <Field label="หมายเหตุ">
+            <input value={form.note} onChange={(event) => setPatch({ note: event.target.value })} placeholder="เช่น จ่ายแล้ว / ฝากไว้ / ชุด 1" className="field" />
+          </Field>
+        </div>
+
+        <div className="mt-5 rounded-[2rem] border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-500">เลขสลาก 6 หลัก</p>
+              <p className={`mt-1 font-mono text-4xl font-black tracking-[0.22em] ${lotteryNumber.length === 6 ? "text-[#0b2e59]" : "text-slate-400"}`}>{lotteryNumber.padEnd(6, "•")}</p>
+            </div>
+            <button onClick={() => setPatch({ lotteryNumber: "" })} className="secondary-button px-4 py-3 text-sm">ล้างเลข</button>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => <KeyButton key={digit} onClick={() => pressDigit(digit)}>{digit}</KeyButton>)}
+            <KeyButton onClick={() => setForm((current) => ({ ...current, lotteryNumber: current.lotteryNumber.slice(0, -1) }))}>ลบ</KeyButton>
+            <KeyButton onClick={() => pressDigit("0")}>0</KeyButton>
+            <KeyButton onClick={() => setPatch({ lotteryNumber: "" })}>CLR</KeyButton>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+            <p className="text-sm font-semibold text-slate-700">จำนวนใบ</p>
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={() => setPatch({ quantity: String(Math.max(1, quantity - 1)) })} className="step-button">−</button>
+              <input value={form.quantity} onChange={(event) => setPatch({ quantity: event.target.value.replace(/[^0-9]/g, "") })} inputMode="numeric" className="field py-3 text-center text-2xl font-bold" />
+              <button onClick={() => setPatch({ quantity: String(quantity + 1) })} className="step-button">+</button>
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {quantityPresets.map((item) => <ChipButton key={item} active={quantity === item} onClick={() => setPatch({ quantity: String(item) })}>{item} ใบ</ChipButton>)}
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+            <p className="text-sm font-semibold text-slate-700">ราคา/ใบ</p>
+            <input value={form.pricePerTicket} onChange={(event) => setPatch({ pricePerTicket: event.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" className="field mt-3 py-3 text-center text-2xl font-bold" />
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {pricePresets.map((item) => <ChipButton key={item} active={pricePerTicket === item} onClick={() => setPatch({ pricePerTicket: String(item) })}>{item}.-</ChipButton>)}
+            </div>
+          </div>
+        </div>
+
+        <div className={`mt-5 rounded-[1.5rem] border p-4 ${canSave ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">ตรวจทานก่อนบันทึก</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{holderName || "ยังไม่ใส่ชื่อ"} • {lotteryNumber || "------"} • {quantity || 0} ใบ • {formatMoney(quantity * pricePerTicket)}</p>
+              <p className="mt-1 text-sm text-slate-600">{duplicate ? `พบรายการเดิม ${duplicate.quantity} ใบ ระบบจะรวมใบให้` : numberError || "พร้อมบันทึก"}</p>
+            </div>
+            <button disabled={!canSave} onClick={addEntry} className="primary-button min-h-16 px-6 py-4 text-lg disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">ตรวจแล้ว บันทึก</button>
+          </div>
         </div>
       </div>
-      <button onClick={addEntry} className="primary-button mt-5 w-full px-5 py-4 text-lg">บันทึกแล้วเพิ่มต่อ</button>
+
+      <aside className="panel mt-0">
+        <SectionTitle title="รายการล่าสุด" description="เห็นทันทีว่าบันทึกเข้าแล้ว ลดโอกาสจดซ้ำหรือหลุดรายการ" />
+        <div className="mt-4 space-y-3">
+          {latestEntries.length ? latestEntries.map((entry) => <RecentEntryCard key={entry.id} entry={entry} />) : <EmptyState text="ยังไม่มีรายการล่าสุด" />}
+        </div>
+      </aside>
     </section>
   );
 }
 
 function BulkPanel(props: { bulkText: string; setBulkText: (value: string) => void; bulkDefaultName: string; setBulkDefaultName: (value: string) => void; prepareBulkData: () => void; drafts: BulkDraft[]; updateDraft: (id: string, patch: Partial<BulkDraft>) => void; confirmBulkData: () => void }) {
+  const validCount = props.drafts.filter((draft) => !draft.error).length;
   return (
     <section className="mt-5 space-y-4">
       <div className="panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <SectionTitle title="วางข้อความจาก LINE" description="เหมาะกับข้อความที่มีชื่อ + เลขสลาก 6 หลัก + จำนวนใบ" />
-          <button onClick={props.prepareBulkData} className="primary-button px-5 py-3">เตรียมข้อมูล</button>
+          <SectionTitle title="วางจาก LINE แล้วให้ระบบแยกให้" description="เหมาะกับลูกค้าส่งหลายรายการเข้ามา ช่วยลดเวลาพิมพ์ใหม่" />
+          <button onClick={props.prepareBulkData} className="primary-button px-5 py-4">แยกรายการ</button>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
           <Field label="ชื่อเริ่มต้น ถ้าบรรทัดไม่มีชื่อ">
-            <input value={props.bulkDefaultName} onChange={(event) => props.setBulkDefaultName(event.target.value)} placeholder="เช่น บอย" className="field" />
+            <input value={props.bulkDefaultName} onChange={(event) => props.setBulkDefaultName(event.target.value)} placeholder="เช่น ลูกค้า LINE" className="field" />
           </Field>
           <Field label="ตัวอย่างรูปแบบที่อ่านได้">
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-slate-700">บอย 123456 1 ใบ<br />มด 654321 2 ใบ ราคา 80<br />เจน<br />778899 1 ใบ</div>
           </Field>
         </div>
         <Field label="วางข้อความชุดจาก LINE">
-          <textarea value={props.bulkText} onChange={(event) => props.setBulkText(event.target.value)} placeholder={'ตัวอย่าง:\nบอย 123456 1 ใบ\nบอย 654321 2 ใบ\nมด 889900 1 ใบ ราคา 80'} className="field mt-2 min-h-48 resize-y leading-7" />
+          <textarea value={props.bulkText} onChange={(event) => props.setBulkText(event.target.value)} placeholder={'ตัวอย่าง:\nบอย 123456 1 ใบ\nบอย 654321 2 ใบ\nมด 889900 1 ใบ ราคา 80'} className="field mt-2 min-h-56 resize-y leading-7" />
         </Field>
       </div>
       {props.drafts.length ? (
         <div className="panel">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <SectionTitle title="ตรวจสอบก่อนยืนยัน" description="แก้ไขช่องที่ระบบแยกผิดได้ แถวที่มีปัญหาจะไม่ถูกบันทึก" />
-            <button onClick={props.confirmBulkData} className="primary-button px-5 py-3">ยืนยันบันทึก {props.drafts.filter((draft) => !draft.error).length} รายการ</button>
+            <SectionTitle title="ตรวจสอบก่อนยืนยัน" description="แถวสีแดงจะไม่ถูกบันทึก แก้ให้ครบก่อนกดยืนยัน" />
+            <button onClick={props.confirmBulkData} className="primary-button px-5 py-4">ยืนยัน {validCount} รายการ</button>
           </div>
           <BulkDraftTable drafts={props.drafts} onUpdate={props.updateDraft} />
         </div>
@@ -411,16 +545,21 @@ function CalculatePanel({ result, setResult, calculateRound }: { result: ResultI
   );
 }
 
-function ReportPanel({ report, copySummary, shareSummary, exportCsv }: { report: ReturnType<typeof buildHolderReport>; copySummary: () => void; shareSummary: () => void; exportCsv: () => void }) {
+function ReportPanel({ report, totals, copySummary, shareSummary, exportCsv }: { report: ReturnType<typeof buildHolderReport>; totals: { totalCost: number; totalReward: number; totalNet: number; entries: number; tickets: number; holders: number }; copySummary: () => void; shareSummary: () => void; exportCsv: () => void }) {
   return (
     <section className="panel">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <SectionTitle title="Report ตามรายชื่อ" description="ดูยอดรวม รางวัล และสุทธิของแต่ละคนในงวดนี้" />
+        <SectionTitle title="สรุปยอดตามรายชื่อ" description="ออกแบบให้ส่งต่อหรือใช้ปิดงวดได้เร็ว" />
         <div className="flex flex-wrap gap-2">
-          <button onClick={copySummary} className="secondary-button px-4 py-3 text-sm">Copy</button>
-          <button onClick={shareSummary} className="primary-button px-4 py-3 text-sm">Share LINE</button>
+          <button onClick={copySummary} className="secondary-button px-4 py-3 text-sm">คัดลอกสรุป</button>
+          <button onClick={shareSummary} className="primary-button px-4 py-3 text-sm">แชร์ LINE</button>
           <button onClick={exportCsv} className="secondary-button px-4 py-3 text-sm">Export CSV</button>
         </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <InfoCard title="ยอดรวมทั้งงวด" text={formatMoney(totals.totalCost)} />
+        <InfoCard title="จำนวนสลาก" text={`${totals.tickets} ใบ จาก ${totals.entries} รายการ`} />
+        <InfoCard title="รางวัลรวม" text={formatMoney(totals.totalReward)} />
       </div>
       <ReportTable report={report} />
     </section>
@@ -490,40 +629,109 @@ function ReportTable({ report }: { report: ReturnType<typeof buildHolderReport> 
   );
 }
 
-function EntryTable({ entries, onDelete }: { entries: Entry[]; onDelete: (id: string) => void }) {
+function EntryTable({ entries, onDelete, onQuantityChange }: { entries: Entry[]; onDelete: (id: string) => void; onQuantityChange: (id: string, delta: number) => void }) {
   if (!entries.length) return <EmptyState text="ยังไม่มีรายการในงวดนี้" />;
   return (
-    <div className="mt-5 overflow-x-auto">
-      <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
-        <thead className="text-left text-slate-500">
-          <tr>
-            <th className="px-3 py-2">ชื่อ</th>
-            <th className="px-3 py-2">เลขสลาก</th>
-            <th className="px-3 py-2">ใบ</th>
-            <th className="px-3 py-2">ยอดรวม</th>
-            <th className="px-3 py-2">สถานะ</th>
-            <th className="px-3 py-2">รางวัล</th>
-            <th className="px-3 py-2">หมายเหตุ</th>
-            <th className="px-3 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.id} className="bg-white">
-              <td className="rounded-l-2xl border-y border-l border-slate-200 px-3 py-3 font-semibold">{entry.holderName}</td>
-              <td className="border-y border-slate-200 px-3 py-3 text-lg font-bold tracking-widest text-[#0b2e59]">{entry.lotteryNumber}</td>
-              <td className="border-y border-slate-200 px-3 py-3">{entry.quantity}</td>
-              <td className="border-y border-slate-200 px-3 py-3">{formatMoney(calculateEntryCost(entry))}</td>
-              <td className="border-y border-slate-200 px-3 py-3">{entry.matchedPrizes.length ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">ถูกรางวัล</span> : <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">ยังไม่พบรางวัล</span>}</td>
-              <td className="border-y border-slate-200 px-3 py-3">{entry.matchedPrizes.map((prize) => prize.label).join(" + ") || "-"}<div className="text-xs text-slate-500">{formatMoney(entry.rewardAmount)}</div></td>
-              <td className="border-y border-slate-200 px-3 py-3 text-slate-500">{entry.note || "-"}</td>
-              <td className="rounded-r-2xl border-y border-r border-slate-200 px-3 py-3 text-right"><button onClick={() => onDelete(entry.id)} className="text-sm font-semibold text-red-500 hover:text-red-700">ลบ</button></td>
+    <div className="mt-5">
+      <div className="space-y-3 md:hidden">
+        {entries.map((entry) => <MobileEntryCard key={entry.id} entry={entry} onDelete={onDelete} onQuantityChange={onQuantityChange} />)}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
+          <thead className="text-left text-slate-500">
+            <tr>
+              <th className="px-3 py-2">ชื่อ</th>
+              <th className="px-3 py-2">เลขสลาก</th>
+              <th className="px-3 py-2">ใบ</th>
+              <th className="px-3 py-2">ยอดรวม</th>
+              <th className="px-3 py-2">สถานะ</th>
+              <th className="px-3 py-2">รางวัล</th>
+              <th className="px-3 py-2">หมายเหตุ</th>
+              <th className="px-3 py-2"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id} className="bg-white">
+                <td className="rounded-l-2xl border-y border-l border-slate-200 px-3 py-3 font-semibold">{entry.holderName}</td>
+                <td className="border-y border-slate-200 px-3 py-3 text-lg font-bold tracking-widest text-[#0b2e59]">{entry.lotteryNumber}</td>
+                <td className="border-y border-slate-200 px-3 py-3"><QuantityControl quantity={entry.quantity} onMinus={() => onQuantityChange(entry.id, -1)} onPlus={() => onQuantityChange(entry.id, 1)} /></td>
+                <td className="border-y border-slate-200 px-3 py-3">{formatMoney(calculateEntryCost(entry))}</td>
+                <td className="border-y border-slate-200 px-3 py-3"><StatusBadge entry={entry} /></td>
+                <td className="border-y border-slate-200 px-3 py-3">{entry.matchedPrizes.map((prize) => prize.label).join(" + ") || "-"}<div className="text-xs text-slate-500">{formatMoney(entry.rewardAmount)}</div></td>
+                <td className="border-y border-slate-200 px-3 py-3 text-slate-500">{entry.note || "-"}</td>
+                <td className="rounded-r-2xl border-y border-r border-slate-200 px-3 py-3 text-right"><button onClick={() => onDelete(entry.id)} className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">ลบ</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
+}
+
+function MobileEntryCard({ entry, onDelete, onQuantityChange }: { entry: Entry; onDelete: (id: string) => void; onQuantityChange: (id: string, delta: number) => void }) {
+  return (
+    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">{entry.holderName}</p>
+          <p className="mt-1 font-mono text-3xl font-black tracking-[0.18em] text-[#0b2e59]">{entry.lotteryNumber}</p>
+          <p className="mt-1 text-sm text-slate-500">{entry.note || "ไม่มีหมายเหตุ"}</p>
+        </div>
+        <StatusBadge entry={entry} />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-2xl bg-slate-50 p-3"><p className="text-slate-500">ยอดรวม</p><p className="font-bold">{formatMoney(calculateEntryCost(entry))}</p></div>
+        <div className="rounded-2xl bg-slate-50 p-3"><p className="text-slate-500">รางวัล</p><p className="font-bold">{formatMoney(entry.rewardAmount)}</p></div>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <QuantityControl quantity={entry.quantity} onMinus={() => onQuantityChange(entry.id, -1)} onPlus={() => onQuantityChange(entry.id, 1)} />
+        <button onClick={() => onDelete(entry.id)} className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">ลบ</button>
+      </div>
+    </div>
+  );
+}
+
+function RecentEntryCard({ entry }: { entry: Entry }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">{entry.holderName}</p>
+          <p className="mt-1 font-mono text-2xl font-black tracking-[0.18em] text-[#0b2e59]">{entry.lotteryNumber}</p>
+        </div>
+        <div className="text-right text-sm">
+          <p className="font-bold">{entry.quantity} ใบ</p>
+          <p className="text-slate-500">{formatMoney(calculateEntryCost(entry))}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuantityControl({ quantity, onMinus, onPlus }: { quantity: number; onMinus: () => void; onPlus: () => void }) {
+  return (
+    <div className="inline-flex items-center rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+      <button onClick={onMinus} className="h-10 w-10 rounded-xl bg-slate-100 text-lg font-black text-slate-700">−</button>
+      <span className="min-w-12 px-3 text-center font-bold">{quantity}</span>
+      <button onClick={onPlus} className="h-10 w-10 rounded-xl bg-[#0b2e59] text-lg font-black text-white">+</button>
+    </div>
+  );
+}
+
+function StatusBadge({ entry }: { entry: Entry }) {
+  return entry.matchedPrizes.length
+    ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">ถูกรางวัล</span>
+    : <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">รอตรวจ</span>;
+}
+
+function KeyButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return <button onClick={onClick} className="h-16 rounded-2xl border border-slate-200 bg-white text-2xl font-black text-slate-900 shadow-sm transition active:scale-95 active:bg-blue-50">{children}</button>;
+}
+
+function ChipButton({ active, onClick, children }: { active?: boolean; onClick: () => void; children: ReactNode }) {
+  return <button onClick={onClick} className={`rounded-xl px-3 py-3 text-sm font-bold transition ${active ? "bg-[#0b2e59] text-white" : "bg-slate-100 text-slate-700 hover:bg-blue-50"}`}>{children}</button>;
 }
 
 function InfoCard({ title, text }: { title: string; text: string }) {
@@ -531,7 +739,7 @@ function InfoCard({ title, text }: { title: string; text: string }) {
 }
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
-  return <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c9973d]">Official record tool</p><h2 className="mt-1 text-xl font-semibold text-[#0b2e59]">{title}</h2><p className="mt-1 text-sm text-slate-600">{description}</p></div>;
+  return <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c9973d]">Field record mode</p><h2 className="mt-1 text-xl font-semibold text-[#0b2e59]">{title}</h2><p className="mt-1 text-sm text-slate-600">{description}</p></div>;
 }
 
 function StatCard({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) {
@@ -539,7 +747,7 @@ function StatCard({ title, value, highlight }: { title: string; value: string; h
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return <button onClick={onClick} className={`rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition ${active ? "bg-[#0b2e59] text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-blue-50"}`}>{children}</button>;
+  return <button onClick={onClick} className={`rounded-2xl px-2 py-3 text-xs font-semibold shadow-sm transition sm:px-4 sm:text-sm ${active ? "bg-[#0b2e59] text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-blue-50"}`}>{children}</button>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
