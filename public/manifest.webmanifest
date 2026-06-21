@@ -1,0 +1,11 @@
+{
+  "name": "Lotto Record MVP",
+  "short_name": "Lotto Record",
+  "description": "เว็บแอพบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัว",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0b2e59",
+  "lang": "th",
+  "orientation": "portrait-primary"
+}
