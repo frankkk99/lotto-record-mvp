@@ -1,26 +1,34 @@
 # Lotto Record MVP
 
-เว็บแอปสำหรับบันทึกและคำนวณข้อมูลรายงวด พร้อม Report และแชร์สรุปไป LINE
+เว็บแอพสำหรับบันทึกเลขสลาก 6 หลัก ตรวจคำนวณผลรางวัล และสรุปรายงานตามรายชื่อ
 
-> ระบบนี้เป็นเครื่องมือบันทึกและคำนวณข้อมูลส่วนตัวเท่านั้น ไม่มีระบบรับซื้อ-ขายสลาก ไม่มีระบบรับแทง ไม่มีระบบฝากถอนเงิน ไม่มีระบบจ่ายรางวัล และไม่มีการชักชวนให้เล่นพนัน
+> ระบบนี้เป็นเครื่องมือบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัวเท่านั้น ไม่ใช่ระบบจำหน่ายสลาก ไม่ใช่ระบบรับแทง ไม่มีระบบฝากถอนเงิน ไม่มีระบบจ่ายรางวัล และไม่มีการชักชวนให้เล่นพนัน
 
-## MVP ที่ทำแล้ว
+## สิ่งที่ปรับปรุงล่าสุด
 
-- Login แบบง่ายด้วยชื่อผู้ใช้งาน
-- เลือกงวดวันที่
-- เพิ่มรายการแบบเร็ว: ชื่อ, เลข, ประเภท, จำนวนเงิน, อัตราจ่าย, หมายเหตุ
-- รายการล่าสุด
-- Report ตามรายชื่อ
-- คำนวณผลหลังออกผล
-- Copy summary และ Web Share สำหรับส่งต่อไป LINE
-- Supabase schema สำหรับต่อยอดระบบจริง
+- ปรับ UI ใหม่เป็นโทนเรียบหรูแบบทางการ: น้ำเงินกรมท่า / ขาว / ทองสุภาพ
+- เปลี่ยนแนวระบบจาก “อัตราจ่าย/หวย” เป็น “บันทึกและตรวจคำนวณสลากส่วนตัว”
+- รองรับการบันทึกเลขสลาก 6 หลัก
+- รองรับจำนวนใบและราคา/ใบ
+- ตรวจคำนวณรางวัลทางการหลัก:
+  - รางวัลที่ 1
+  - เลขหน้า 3 ตัว
+  - เลขท้าย 3 ตัว
+  - เลขท้าย 2 ตัว
+- เพิ่มการวางข้อความจาก LINE แล้วตรวจสอบก่อนบันทึก
+- เพิ่ม Report แยกตามรายชื่อ
+- เพิ่ม Copy / Share LINE / Export CSV
+- เพิ่ม PWA manifest สำหรับติดตั้งเป็นเว็บแอพบนมือถือ
+- ปรับ Supabase schema ให้เหมาะกับข้อมูลสลาก 6 หลัก
 
 ## Tech Stack
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
+- localStorage สำหรับ MVP
 - Supabase-ready schema
+- Vercel-ready deployment
 
 ## วิธีรันในเครื่อง
 
@@ -35,23 +43,16 @@ npm run dev
 http://localhost:3000
 ```
 
-## วิธีอัปขึ้น GitHub
-
-สร้าง repo เปล่าบน GitHub เช่น `lotto-record-mvp` แล้วรัน:
+## คำสั่งตรวจ build
 
 ```bash
-git init
-git add .
-git commit -m "Initial Lotto Record MVP"
-git branch -M main
-git remote add origin https://github.com/frankkk99/lotto-record-mvp.git
-git push -u origin main
+npm run build
 ```
 
 ## วิธี Deploy ไป Vercel
 
 1. เข้า Vercel
-2. Import GitHub repo
+2. Import GitHub repo นี้
 3. Framework เลือก Next.js
 4. กด Deploy
 
@@ -61,20 +62,22 @@ git push -u origin main
 2. เปิด SQL Editor
 3. วางโค้ดจาก `supabase/schema.sql`
 4. ตั้งค่า `.env.local` จาก `.env.example`
-5. เปลี่ยน logic จาก localStorage ไป Supabase client
+5. ย้ายข้อมูลจาก localStorage ไปใช้ Supabase client
+6. เปิด Row Level Security ก่อนใช้จริง
 
-## ต่อ LINE OA / LIFF ต่อไป
+## Roadmap รอบต่อไป
 
-ฟีเจอร์ที่ควรเพิ่มในรอบถัดไป:
-
-- LINE Login
-- LIFF เปิดหน้า Add Entry ใน LINE
-- shareTargetPicker สำหรับแชร์เข้าแชต/กลุ่ม
-- Messaging API Webhook `/api/line/webhook`
-- Rich Menu: เพิ่มรายการ, Report, คำนวณผล, ประวัติ
+- Supabase Auth
+- LINE Login / LIFF
+- บันทึกข้อมูลงวดจริงลงฐานข้อมูล
+- Role: admin / staff / viewer
+- PDF export
+- Audit log สำหรับการแก้ไข/ลบรายการ
+- Backup/restore รายงวด
 
 ## หมายเหตุด้านความปลอดภัย
 
 - เวอร์ชันนี้เก็บข้อมูลใน browser localStorage เพื่อทดสอบ UX ก่อน
 - ห้ามใช้เก็บข้อมูลจริงระยะยาวจนกว่าจะต่อ Supabase และ Row Level Security
 - ไม่ควรเพิ่มระบบฝากถอน จ่ายเงิน หรือรับรายการจากบุคคลภายนอกแบบสาธารณะ
+- ควรตรวจผลรางวัลจากแหล่งทางการก่อนกดคำนวณทุกครั้ง
