@@ -1,24 +1,26 @@
-import type { Entry, HolderReport, PrizeMatch, PrizeType, ResultInput } from "@/src/types";
+import type { CustomerReport, EntryKind, NumberEntry, PaymentStatus } from "@/src/types";
 
-export const officialPrizeAmount: Record<PrizeType, number> = {
-  first_prize: 6000000,
-  front_3: 4000,
-  back_3: 4000,
-  bottom_2: 2000
+export const kindLabel: Record<EntryKind, string> = {
+  two_top: "2 ตัวบน",
+  two_bottom: "2 ตัวล่าง",
+  three_direct: "3 ตัวตรง",
+  three_tod: "3 ตัวโต๊ด",
+  run_top: "วิ่งบน",
+  run_bottom: "วิ่งล่าง"
 };
 
-export const prizeTypeLabel: Record<PrizeType, string> = {
-  first_prize: "รางวัลที่ 1",
-  front_3: "เลขหน้า 3 ตัว",
-  back_3: "เลขท้าย 3 ตัว",
-  bottom_2: "เลขท้าย 2 ตัว"
+export const kindShortLabel: Record<EntryKind, string> = {
+  two_top: "บน",
+  two_bottom: "ล่าง",
+  three_direct: "ตรง",
+  three_tod: "โต๊ด",
+  run_top: "วิ่งบน",
+  run_bottom: "วิ่งล่าง"
 };
 
-export const emptyResultInput: ResultInput = {
-  firstPrize: "",
-  front3: "",
-  back3: "",
-  bottom2: ""
+export const paymentLabel: Record<PaymentStatus, string> = {
+  paid: "จ่ายแล้ว",
+  unpaid: "ค้างจ่าย"
 };
 
 export function normalizeNumber(value: string): string {
@@ -28,107 +30,86 @@ export function normalizeNumber(value: string): string {
     .trim();
 }
 
-export function splitNumberList(value: string, length: number): string[] {
-  return value
-    .split(/[\s,，、/|]+/)
-    .map(normalizeNumber)
-    .filter((item) => item.length === length);
+export function expectedDigits(kind: EntryKind): number {
+  if (kind === "run_top" || kind === "run_bottom") return 1;
+  if (kind === "three_direct" || kind === "three_tod") return 3;
+  return 2;
 }
 
-export function validateLotteryNumber(number: string): string | null {
-  if (!number) return "กรุณาใส่เลขสลาก";
-  if (number.length !== 6) return "เลขสลากต้องมี 6 หลัก";
+export function validateNumberForKind(number: string, kind: EntryKind): string | null {
+  const digits = expectedDigits(kind);
+  if (!number) return "กรุณากดเลข";
+  if (number.length !== digits) return `ประเภทนี้ต้องใช้เลข ${digits} หลัก`;
   return null;
 }
 
-export function normalizeResultInput(result: ResultInput): ResultInput {
-  return {
-    firstPrize: normalizeNumber(result.firstPrize).slice(0, 6),
-    front3: splitNumberList(result.front3, 3).join(" "),
-    back3: splitNumberList(result.back3, 3).join(" "),
-    bottom2: normalizeNumber(result.bottom2).slice(0, 2)
-  };
-}
-
-export function calculateEntryCost(entry: Pick<Entry, "quantity" | "pricePerTicket">): number {
-  return entry.quantity * entry.pricePerTicket;
-}
-
-export function calculateMatches(lotteryNumber: string, result: ResultInput): PrizeMatch[] {
-  const clean = normalizeResultInput(result);
-  const front3 = lotteryNumber.slice(0, 3);
-  const back3 = lotteryNumber.slice(-3);
-  const bottom2 = lotteryNumber.slice(-2);
-  const matches: PrizeMatch[] = [];
-
-  if (clean.firstPrize && lotteryNumber === clean.firstPrize) {
-    matches.push({ type: "first_prize", label: prizeTypeLabel.first_prize, amountPerTicket: officialPrizeAmount.first_prize });
-  }
-
-  if (clean.front3 && splitNumberList(clean.front3, 3).includes(front3)) {
-    matches.push({ type: "front_3", label: prizeTypeLabel.front_3, amountPerTicket: officialPrizeAmount.front_3 });
-  }
-
-  if (clean.back3 && splitNumberList(clean.back3, 3).includes(back3)) {
-    matches.push({ type: "back_3", label: prizeTypeLabel.back_3, amountPerTicket: officialPrizeAmount.back_3 });
-  }
-
-  if (clean.bottom2 && bottom2 === clean.bottom2) {
-    matches.push({ type: "bottom_2", label: prizeTypeLabel.bottom_2, amountPerTicket: officialPrizeAmount.bottom_2 });
-  }
-
-  return matches;
-}
-
-export function calculateEntries(entries: Entry[], result: ResultInput): Entry[] {
-  return entries.map((entry) => {
-    const matchedPrizes = calculateMatches(entry.lotteryNumber, result);
-    const rewardAmount = matchedPrizes.reduce((sum, prize) => sum + prize.amountPerTicket * entry.quantity, 0);
-    const netAmount = rewardAmount - calculateEntryCost(entry);
-    return { ...entry, matchedPrizes, rewardAmount, netAmount };
-  });
-}
-
-export function buildHolderReport(entries: Entry[]): HolderReport[] {
-  const map = new Map<string, HolderReport>();
-
-  for (const entry of entries) {
-    const key = entry.holderName.trim() || "ไม่ระบุชื่อ";
-    const current = map.get(key) ?? {
-      holderName: key,
-      totalEntries: 0,
-      totalTickets: 0,
-      totalCost: 0,
-      totalReward: 0,
-      netAmount: 0,
-      wins: 0
-    };
-
-    current.totalEntries += 1;
-    current.totalTickets += entry.quantity;
-    current.totalCost += calculateEntryCost(entry);
-    current.totalReward += entry.rewardAmount;
-    current.netAmount = current.totalReward - current.totalCost;
-    current.wins += entry.matchedPrizes.length > 0 ? 1 : 0;
-    map.set(key, current);
-  }
-
-  return Array.from(map.values()).sort((a, b) => b.totalCost - a.totalCost);
+export function sanitizeAmount(value: string): string {
+  const clean = value.replace(/[^0-9.]/g, "");
+  const parts = clean.split(".");
+  return parts.length > 1 ? `${parts[0]}.${parts.slice(1).join("").slice(0, 2)}` : clean;
 }
 
 export function formatMoney(value: number): string {
-  return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", maximumFractionDigits: 0 }).format(value || 0);
 }
 
-export function buildLineSummary(drawDate: string, report: HolderReport[], entries: Entry[]): string {
-  const totalTickets = entries.reduce((sum, entry) => sum + entry.quantity, 0);
-  const totalCost = entries.reduce((sum, entry) => sum + calculateEntryCost(entry), 0);
-  const totalReward = entries.reduce((sum, entry) => sum + entry.rewardAmount, 0);
-  const net = totalReward - totalCost;
+export function sameCustomer(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+export function reverseNumbers(number: string, kind: EntryKind): string[] {
+  const clean = normalizeNumber(number);
+  if (kind === "run_top" || kind === "run_bottom") return [clean];
+  if (clean.length <= 1) return [clean];
+
+  const result = new Set<string>();
+  function permute(prefix: string, rest: string) {
+    if (!rest) {
+      result.add(prefix);
+      return;
+    }
+    for (let index = 0; index < rest.length; index += 1) {
+      permute(prefix + rest[index], rest.slice(0, index) + rest.slice(index + 1));
+    }
+  }
+
+  permute("", clean);
+  return Array.from(result).sort();
+}
+
+export function buildCustomerReport(entries: NumberEntry[]): CustomerReport[] {
+  const map = new Map<string, CustomerReport>();
+
+  for (const entry of entries) {
+    const key = entry.customerName.trim() || "ไม่ระบุชื่อ";
+    const current = map.get(key) ?? {
+      customerName: key,
+      totalEntries: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      unpaidAmount: 0,
+      latestAt: entry.createdAt
+    };
+
+    current.totalEntries += 1;
+    current.totalAmount += entry.amount;
+    if (entry.paymentStatus === "paid") current.paidAmount += entry.amount;
+    if (entry.paymentStatus === "unpaid") current.unpaidAmount += entry.amount;
+    if (entry.createdAt > current.latestAt) current.latestAt = entry.createdAt;
+    map.set(key, current);
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
+}
+
+export function buildLineSummary(drawDate: string, report: CustomerReport[], entries: NumberEntry[]): string {
+  const totalAmount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  const paidAmount = entries.filter((entry) => entry.paymentStatus === "paid").reduce((sum, entry) => sum + entry.amount, 0);
+  const unpaidAmount = totalAmount - paidAmount;
   const lines = report
-    .slice(0, 30)
-    .map((item, index) => `${index + 1}. ${item.holderName} | ${item.totalTickets} ใบ | ยอด ${formatMoney(item.totalCost)} | รางวัล ${formatMoney(item.totalReward)} | สุทธิ ${item.netAmount >= 0 ? "+" : ""}${formatMoney(item.netAmount)}`)
+    .slice(0, 50)
+    .map((item, index) => `${index + 1}. ${item.customerName} | ${item.totalEntries} รายการ | รวม ${formatMoney(item.totalAmount)} | ค้าง ${formatMoney(item.unpaidAmount)}`)
     .join("\n");
 
-  return `สรุปงวด ${drawDate}\n\nจำนวนรายการ: ${entries.length} รายการ\nจำนวนสลาก: ${totalTickets} ใบ\nยอดรวม: ${formatMoney(totalCost)}\nรางวัลรวม: ${formatMoney(totalReward)}\nสุทธิรวม: ${net >= 0 ? "+" : ""}${formatMoney(net)}\n\n${lines || "ยังไม่มีข้อมูล"}\n\nหมายเหตุ: ระบบนี้เป็นเครื่องมือบันทึกและตรวจคำนวณข้อมูลสลากส่วนตัวเท่านั้น ไม่ใช่ระบบจำหน่ายสลาก รับแทง หรือจ่ายเงิน`;
+  return `สรุปงวด ${drawDate}\n\nรายการทั้งหมด: ${entries.length} รายการ\nยอดรวม: ${formatMoney(totalAmount)}\nจ่ายแล้ว: ${formatMoney(paidAmount)}\nค้างจ่าย: ${formatMoney(unpaidAmount)}\n\n${lines || "ยังไม่มีข้อมูล"}\n\nหมายเหตุ: ระบบนี้เป็นเครื่องมือบันทึกข้อมูลส่วนตัว ไม่มีระบบฝากถอน รับเงินออนไลน์ หรือจ่ายเงินในระบบ`;
 }
